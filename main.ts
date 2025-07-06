@@ -192,10 +192,19 @@ function showNum(number: number) {
     }
 }
 
-function dropGraphicProvider(dropX: number) {
+function dropGraphicProvider(dropX:number) {
     function deathChecker() {
         if (x == dropX) {
             mode = 10;
+            drop1x = -1;
+            drop2x = -1;
+            drop3x = -1;
+            drop4x = -1;
+            orbitalDropX = -1;
+            basic.clearScreen();
+            music.stopAllSounds();
+            music.play(music.stringPlayable("C5 B A G F E D C ", 120), music.PlaybackMode.InBackground);
+            basic.showIcon(IconNames.Sad);
         }
     }
     for (let i = 0; i < 4; i++) {
@@ -221,11 +230,47 @@ function dropGraphicProvider(dropX: number) {
     if (((mode == 5) || (mode == 7) || (mode == 8)) && (orbitalSoundOverride == 0)) {
         music.play(music.tonePlayable(165, music.beat(BeatFraction.Sixteenth)), music.PlaybackMode.InBackground);
     }
+    basic.pause(30);
+    led.plotBrightness(dropX, 3, 191);
+    led.plotBrightness(dropX, 2, 127);
+    led.plotBrightness(dropX, 1, 63);
+    led.plotBrightness(dropX, 0, 0);
+    deathChecker();
+    basic.pause(30);
+    led.plotBrightness(dropX, 4, 191);
+    led.plotBrightness(dropX, 3, 127);
+    led.plotBrightness(dropX, 2, 63);
+    led.plotBrightness(dropX, 1, 0);
+    deathChecker();
+    basic.pause(30);
+    led.plotBrightness(dropX, 4, 127);
+    led.plotBrightness(dropX, 3, 63);
+    led.plotBrightness(dropX, 2, 0);
+    deathChecker();
+    basic.pause(30);
+    led.plotBrightness(dropX, 4, 63);
+    led.plotBrightness(dropX, 3, 0);
+    deathChecker();
+    basic.pause(30);
+    led.plotBrightness(dropX, 4, 0);
+    deathChecker();
+    basic.pause(100);
+    score += randint(0, 1);
+    if (dropX == drop1x) {
+        drop1x = -1;
+    } else if (dropX == drop2x) {
+        drop2x = -1;
+    } else if(dropX == drop3x) {
+        drop3x = -1;
+    } else if(dropX == drop4x) {
+        drop4x = -1;
+    }
 }
+
 
 //VARIABLES
 
-let mode = 1;
+let mode = 5;
 let page = 2;
 let volume = 10;
 let x = 2;
@@ -236,7 +281,18 @@ let drop2x = -1;
 let drop3x = -1;
 let drop4x = -1;
 let orbitalDropX = -1;
+let score = 0;
 let orbitalSoundOverride = 0;
+let volumeMemory = 10;
+
+input.onLogoEvent(TouchButtonEvent.Pressed, function() {
+    if (volume == 0) {
+        volume = volumeMemory;
+    } else {
+        volumeMemory = volume;
+        volume = 0;
+    }
+});
 
 basic.forever(function () {
     if (mode == 1) {
@@ -408,7 +464,47 @@ loops.everyInterval(randint((500 / difficulty) + 250, ((500 / difficulty) + 250)
     if ((mode == 5) || (mode == 7)) {
         if (drop1x == -1) {
             drop1x = randint(0, 4);
-
+            if ((drop1x == drop2x) || (drop1x == drop3x) || (drop1x == drop4x) || (drop1x == orbitalDropX)) {
+                drop1x = -1;
+            } else {
+                dropGraphicProvider(drop1x);
+            }
+        }
+    }
+});
+loops.everyInterval(randint((500 / difficulty) + 250, ((500 / difficulty) + 250) * 12), function () {
+    if ((mode == 5) || (mode == 7)) {
+        if (drop2x == -1) {
+            drop2x = randint(0, 4);
+            if ((drop1x == drop2x) || (drop2x == drop3x) || (drop2x == drop4x) || (drop2x == orbitalDropX)) {
+                drop2x = -1;
+            } else {
+                dropGraphicProvider(drop2x);
+            }
+        }
+    }
+});
+loops.everyInterval(randint((500 / difficulty) + 250, ((500 / difficulty) + 250) * 12), function () {
+    if ((mode == 5) || (mode == 7)) {
+        if (drop3x == -1) {
+            drop3x = randint(0, 4);
+            if ((drop1x == drop3x) || (drop2x == drop3x) || (drop3x == drop4x) || (drop3x == orbitalDropX)) {
+                drop3x = -1;
+            } else {
+                dropGraphicProvider(drop3x);
+            }
+        }
+    }
+});
+loops.everyInterval(randint((500 / difficulty) + 250, ((500 / difficulty) + 250) * 12), function () {
+    if ((mode == 5) || (mode == 7)) {
+        if (drop4x == -1) {
+            drop4x = randint(0, 4);
+            if ((drop1x == drop4x) || (drop4x == drop3x) || (drop2x == drop4x) || (drop4x == orbitalDropX)) {
+                drop4x = -1;
+            } else {
+                dropGraphicProvider(drop4x);
+            }
         }
     }
 });
