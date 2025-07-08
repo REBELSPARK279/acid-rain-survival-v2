@@ -433,13 +433,14 @@ radio.setTransmitPower(7);
 
 //INPUTS
 
-input.onLogoEvent(TouchButtonEvent.Touched, function() {
+input.onPinPressed(TouchPin.P2, function() {
     if (volume == 0) {
         volume = volumeMemory;
     } else {
         volumeMemory = volume;
         volume = 0;
     }
+    music.setVolume(10 * volume);
 });
 
 basic.forever(function () {
@@ -700,6 +701,7 @@ input.onButtonPressed(Button.A, function () {
         volume--;
         music.setVolume(volume * 25);
         music.play(music.tonePlayable(392, music.beat(BeatFraction.Whole)), music.PlaybackMode.InBackground);
+        volumeMemory = volume;
     } else if (mode == 13) {
         if (page > 1) {
             page--;
@@ -753,6 +755,7 @@ input.onButtonPressed(Button.B, function () {
         }
         music.setVolume(volume * 25);
         music.play(music.tonePlayable(392, music.beat(BeatFraction.Whole)), music.PlaybackMode.InBackground);
+        volumeMemory = volume;
     } else if (mode == 13) {
         if (page < 4) {
             page++;
