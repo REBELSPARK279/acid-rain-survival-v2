@@ -397,6 +397,12 @@ function updateStats(update:string) {
     }
 }
 
+function errorSound() {
+    music.play(music.tonePlayable(247, music.beat(BeatFraction.Quarter)), music.PlaybackMode.InBackground);
+    basic.pause(200);
+    music.play(music.tonePlayable(247, music.beat(BeatFraction.Quarter)), music.PlaybackMode.InBackground);
+}
+
 //VARIABLES
 
 let mode = 1;
@@ -684,7 +690,7 @@ input.onButtonPressed(Button.A, function () {
             }
             LR = "left";
         } else {
-
+            errorSound();
         }
         if ((mode == 5) && (offline == 0)) {
             radio.sendValue("LR", 0);
@@ -729,7 +735,7 @@ input.onButtonPressed(Button.B, function () {
             }
             LR = "right";
         } else {
-
+            errorSound();
         }
         if ((mode == 5) && (offline == 0)) {
             radio.sendValue("LR", 1);
@@ -818,17 +824,12 @@ input.onButtonPressed(Button.AB, function () {
             radio.setGroup(page - 2);
         }
     } else if ((mode == 5) || (mode == 7) || (mode == 8)) {
-        function no() {
-            music.play(music.tonePlayable(247, music.beat(BeatFraction.Quarter)), music.PlaybackMode.InBackground);
-            basic.pause(200);
-            music.play(music.tonePlayable(247, music.beat(BeatFraction.Quarter)), music.PlaybackMode.InBackground);
-        }
         if (dashCD == 0) {
             if (LR == "none") {
-                no();
+                errorSound();
             } else if (LR == "left") {
                 if (x == 0) {
-                    no();
+                    errorSound();
                 } else if (x == 1) {
                     x = 0;
                     led.plot(0, 4);
@@ -842,7 +843,7 @@ input.onButtonPressed(Button.AB, function () {
                 }
             } else if (LR == "right") {
                 if (x == 4) {
-                    no();
+                    errorSound();
                 } else if (x == 3) {
                     x = 4;
                     led.plot(4, 4);
