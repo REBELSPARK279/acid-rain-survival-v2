@@ -388,12 +388,6 @@ function updateStats(update:string) {
         radio.sendValue("score", score);
     } else if (update == "cooldown") {
         radio.sendValue("cooldown", dashCD);
-    } else if (update == "LR") {
-        if (LR == "left") {
-            radio.sendValue("LR", 0);
-        } else {
-            radio.sendValue("LR", 1);
-        }
     }
 }
 
@@ -420,13 +414,12 @@ let score = 0;
 let orbitalSoundOverride = 0;
 let volumeMemory = 10;
 let orbitalCooldown = 15000;
-let LR = "none";
 let statsScore = 0;
 let statsCD = 0;
-let statsLR = "none";
 let offline = 0;
 let emptyServerPingCount1p = 0;
 let inactivityCount1p = 0;
+let dash = 0;
 
 radio.setGroup(0);
 radio.setTransmitPower(7);
@@ -441,6 +434,12 @@ input.onPinPressed(TouchPin.P2, function() {
         volume = 0;
     }
     music.setVolume(10 * volume);
+    led.plotAll();
+    basic.pause(100);
+    basic.clearScreen();
+    if ((mode == 5) || (mode == 7) || (mode == 8)) {
+        led.plot(x, 4);
+    }
 });
 
 basic.forever(function () {
@@ -559,32 +558,6 @@ basic.forever(function () {
             showNum(statsScore);
         } else if (page == 3) {
             showNum(statsCD);
-        } else if (page == 4) {
-            if (statsLR == "none") {
-                basic.showLeds(`
-                . . . . .
-                . . . . .
-                . # # # .
-                . . . . .
-                . . . . .
-                `);
-            } else if (statsLR == "left") {
-                basic.showLeds(`
-                # . . . .
-                # . . . .
-                # . . . .
-                # . . . .
-                # # # # .
-                `);
-            } else if (statsLR == "right") {
-                basic.showLeds(`
-                # # # . .
-                # . . # .
-                # # # . .
-                # . . # .
-                # . . . #
-                `);
-            }
         }
     } else if (mode == 15) {
         basic.showLeds(`
@@ -649,14 +622,6 @@ radio.onReceivedValue(function(name:string, value:number) {
         } else if (name == "cooldown") {
             statsCD = value;
             inactivityCount1p = 0;
-        } else if (name == "LR") {
-            if (value == 0) {
-                statsLR = "left";
-                inactivityCount1p = 0;
-            } else if (value == 1) {
-                statsLR = "right";
-                inactivityCount1p = 0;
-            }
         }
     }
 });
@@ -677,21 +642,36 @@ input.onButtonPressed(Button.A, function () {
             page--;
         }
     } else if ((mode == 5) || (mode == 7) || (mode == 8)) {
-        if (x > 0) {
-            x--;
-            for (let i = 0; i < 5; i++) {
-                if (x != i) {
-                    led.unplot(i, 4)
-                } else {
-                    led.plot(i, 4);
+        if (dash == 0) {
+            if (x > 0) {
+                x--;
+                for (let i = 0; i < 5; i++) {
+                    if (x != i) {
+                        led.unplot(i, 4)
+                    } else {
+                        led.plot(i, 4);
+                    }
                 }
+                if (dashCD != 0) {
+                    dashCD--;
+                }
+            } else {
+                errorSound();
             }
-            if (dashCD != 0) {
-                dashCD--;
-            }
-            LR = "left";
         } else {
-            errorSound();
+            if (x == 0) {
+                errorSound();
+            } else if (x == 1) {
+                x = 0;
+                led.plot(0, 4);
+                led.unplot(1, 4);
+            } else {
+                led.unplot(x, 4);
+                x -= 2;
+                led.plot(x, 4);
+                dashCD = 15;
+            }
+            dash = 0;
         }
         if ((mode == 5) && (offline == 0)) {
             radio.sendValue("LR", 0);
@@ -723,21 +703,36 @@ input.onButtonPressed(Button.B, function () {
             page++;
         }
     } else if ((mode == 5) || (mode == 7) || (mode == 8)) {
-        if (x < 4) {
-            x++;
-            for (let i = 0; i < 5; i++) {
-                if (x != i) {
-                    led.unplot(i, 4)
-                } else {
-                    led.plot(i, 4);
+        if (dash == 0) {
+            if (x < 4) {
+                x++;
+                for (let i = 0; i < 5; i++) {
+                    if (x != i) {
+                        led.unplot(i, 4)
+                    } else {
+                        led.plot(i, 4);
+                    }
                 }
+                if (dashCD != 0) {
+                    dashCD--;
+                }
+            } else {
+                errorSound();
             }
-            if (dashCD != 0) {
-                dashCD--;
-            }
-            LR = "right";
         } else {
-            errorSound();
+            if (x == 4) {
+                errorSound();
+            } else if (x == 3) {
+                x = 4;
+                led.plot(4, 4);
+                led.unplot(3, 4);
+            } else {
+                led.unplot(x, 4);
+                x += 2;
+                led.plot(x, 4);
+                dashCD = 15;
+            }
+            dash = 0;
         }
         if ((mode == 5) && (offline == 0)) {
             radio.sendValue("LR", 1);
@@ -827,38 +822,16 @@ input.onButtonPressed(Button.AB, function () {
             radio.setGroup(page - 2);
         }
     } else if ((mode == 5) || (mode == 7) || (mode == 8)) {
-        if (dashCD == 0) {
-            if (LR == "none") {
+        if (dash == 0) {
+            if (dashCD == 0) {
+                music.play(music.tonePlayable(785, music.beat(BeatFraction.Quarter)), music.PlaybackMode.InBackground);
+                dash = 1;
+            } else {
                 errorSound();
-            } else if (LR == "left") {
-                if (x == 0) {
-                    errorSound();
-                } else if (x == 1) {
-                    x = 0;
-                    led.plot(0, 4);
-                    led.unplot(1, 4);
-                } else {
-                    led.unplot(x, 4);
-                    x -= 2;
-                    led.plot(x, 4);
-                    music.play(music.tonePlayable(785, music.beat(BeatFraction.Quarter)), music.PlaybackMode.InBackground);
-                    dashCD = 15;
-                }
-            } else if (LR == "right") {
-                if (x == 4) {
-                    errorSound();
-                } else if (x == 3) {
-                    x = 4;
-                    led.plot(4, 4);
-                    led.unplot(3, 4);
-                } else {
-                    led.unplot(x, 4);
-                    x += 2;
-                    led.plot(x, 4);
-                    music.play(music.tonePlayable(785, music.beat(BeatFraction.Quarter)), music.PlaybackMode.InBackground);
-                    dashCD = 15;
-                }
             }
+        } else {
+            dash = 0;
+            music.play(music.tonePlayable(525, music.beat(BeatFraction.Quarter)), music.PlaybackMode.InBackground);
         }
     } else if (mode == 9) {
         mode = 2;
@@ -874,7 +847,6 @@ input.onButtonPressed(Button.AB, function () {
             mode = 12;
             statsScore = 0;
             statsCD = 0;
-            statsLR = "none";
         }
     } else if (mode == 13) {
         if (page == 1) {
