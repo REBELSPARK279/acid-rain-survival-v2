@@ -831,6 +831,7 @@ input.onButtonPressed(Button.AB, function () {
             }
         } else {
             dash = 0;
+            led.plot(x, 4);
             music.play(music.tonePlayable(525, music.beat(BeatFraction.Quarter)), music.PlaybackMode.InBackground);
         }
     } else if (mode == 9) {
@@ -953,5 +954,10 @@ loops.everyInterval(randint(orbitalCooldown / 2, orbitalCooldown), function() {
                 orbitalDropGraphicsProvider();
             }
         }
+    }
+});
+loops.everyInterval(100, function() {
+    if (((mode == 5) || (mode == 7) || (mode == 8)) && (dash == 1)) {
+        led.toggle(x, 4);
     }
 });
