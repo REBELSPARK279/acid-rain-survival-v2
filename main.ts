@@ -16,6 +16,8 @@ mode directory
 13: stats browser
 14: stats viewer
 15: 1p server status checker (server empty?)
+16: record view
+17: host died while in stats
 */
 
 //FUNCTIONS
@@ -220,8 +222,12 @@ function dropGraphicProvider(dropX:number) {
                 basic.clearScreen();
                 music.stopAllSounds();
                 basic.showIcon(IconNames.Sad);
+                if (offline == 0) {
+                    radio.sendString("1ply-death");
+                }
                 music.play(music.stringPlayable("C5 B A G F E D C ", 120), music.PlaybackMode.UntilDone);
                 basic.pause(500);
+                basic.clearScreen();
                 mode = 10;
             } else {
 
@@ -302,6 +308,7 @@ function dropGraphicProvider(dropX:number) {
     if ((mode == 5) || (mode == 7) || (mode == 8)) {
         basic.pause(100);
         score += randint(0, 1);
+        difficulty = (0.0279 * score) + 1;
         if ((mode == 5) && (offline == 0)) {
             radio.sendValue("score", score);
         }
@@ -331,8 +338,12 @@ function orbitalDropGraphicsProvider() {
                 basic.clearScreen();
                 music.stopAllSounds();
                 basic.showIcon(IconNames.Sad);
+                if (offline == 0) {
+                    radio.sendString("1ply-death");
+                }
                 music.play(music.stringPlayable("C5 B A G F E D C ", 120), music.PlaybackMode.UntilDone);
                 basic.pause(500);
+                basic.clearScreen();
                 mode = 10;
             } else {
 
@@ -375,6 +386,7 @@ function orbitalDropGraphicsProvider() {
     led.unplot(orbitalDropX, 4);
     if ((mode == 5) || (mode == 7) || (mode == 8)) {
         score++;
+        difficulty = (0.0279 * score) + 1;
         if ((mode == 5) && (offline == 0)) {
             radio.sendValue("score", score);
         }
@@ -395,6 +407,29 @@ function errorSound() {
     music.play(music.tonePlayable(247, music.beat(BeatFraction.Quarter)), music.PlaybackMode.InBackground);
     basic.pause(200);
     music.play(music.tonePlayable(247, music.beat(BeatFraction.Quarter)), music.PlaybackMode.InBackground);
+}
+
+function gameoverResetVars() {
+    if (score > record) {
+        record = score;
+    }
+    x = 2;
+    dashCD = 0;
+    difficulty = 1;
+    drop1x = -1;
+    drop2x = -1;
+    drop3x = -1;
+    drop4x = -1;
+    orbitalDropX = -1;
+    score = 0;
+    orbitalSoundOverride = 0;
+    orbitalCooldown = 15000;
+    statsScore = 0;
+    statsCD = 0;
+    offline = 0;
+    emptyServerPingCount1p = 0;
+    inactivityCount1p = 0;
+    dash = 0;
 }
 
 //VARIABLES
@@ -420,6 +455,7 @@ let offline = 0;
 let emptyServerPingCount1p = 0;
 let inactivityCount1p = 0;
 let dash = 0;
+let record = 0;
 
 radio.setGroup(0);
 radio.setTransmitPower(7);
@@ -433,7 +469,7 @@ input.onPinPressed(TouchPin.P2, function() {
         volumeMemory = volume;
         volume = 0;
     }
-    music.setVolume(10 * volume);
+    music.setVolume(25 * volume);
     led.plotAll();
     basic.pause(100);
     basic.clearScreen();
@@ -519,6 +555,8 @@ basic.forever(function () {
         }
     } else if (mode == 9) {
         showNum(volume);
+    } else if (mode == 10) {
+        showNum(score);
     } else if (mode == 12) {
         basic.showLeds(`
         .....
@@ -572,14 +610,34 @@ basic.forever(function () {
         led.plot(4, 4);
         basic.pause(500);
         radio.sendString("1ppl-empty");
-        if (emptyServerPingCount1p == 4) {
+        if (emptyServerPingCount1p == 1) {
             basic.clearScreen();
+            mode = 0;
+            music.play(music.stringPlayable("C D E F G A B C5 ", 480), music.PlaybackMode.InBackground);
+            basic.showIcon(IconNames.Yes);
+            basic.pause(1250);
+            music.play(music.tonePlayable(575, music.beat(BeatFraction.Breve)), music.PlaybackMode.InBackground);
+            showNum(3);
+            basic.pause(1000);
+            music.play(music.tonePlayable(575, music.beat(BeatFraction.Breve)), music.PlaybackMode.InBackground);
+            showNum(2);
+            basic.pause(1000);
+            music.play(music.tonePlayable(575, music.beat(BeatFraction.Breve)), music.PlaybackMode.InBackground);
+            showNum(1);
+            basic.pause(1000);
+            basic.clearScreen();
+            music.play(music.tonePlayable(850, music.beat(BeatFraction.Breve)), music.PlaybackMode.InBackground);
+            music.setTempo(120);
             mode = 5;
             led.plot(2, 4);
             emptyServerPingCount1p = 0;
         } else {
             emptyServerPingCount1p++;
         }
+    } else if (mode == 16) {
+        showNum(record);
+    } else if (mode == 17) {
+        showNum(statsScore);
     }
 });
 
@@ -597,6 +655,14 @@ radio.onReceivedString(function(receivedString:string) {
             basic.pause(1000);
             mode = 13;
             page = 2;
+        }
+    } else if ((mode == 13) || (mode == 14)) {
+        if (receivedString == "1ply-death") {
+            mode = 0;
+            basic.showIcon(IconNames.Sad);
+            basic.pause(500);
+            basic.clearScreen();
+            mode = 17;
         }
     } else if (mode == 15) {
         if (receivedString == "1ply-occupied") {
@@ -766,7 +832,7 @@ input.onButtonPressed(Button.AB, function () {
         } else if (page == 2) {
             mode = 3;
         } else if (page == 3) {
-
+            mode = 16;
         } else if (page == 4) {
             mode = 11;
             page = 2;
@@ -836,9 +902,11 @@ input.onButtonPressed(Button.AB, function () {
         }
     } else if (mode == 9) {
         mode = 2;
-    } else if (mode == 10) {
+    } else if ((mode == 10) || (mode == 17)) {
         basic.clearScreen();
-        mode = 5;
+        gameoverResetVars();
+        mode = 1;
+        page = 2;
     } else if (mode == 11) {
         if (page == 1) {
             mode = 1;
@@ -859,6 +927,8 @@ input.onButtonPressed(Button.AB, function () {
         }
     } else if (mode == 14) {
         mode = 13;
+    } else if (mode == 16) {
+        mode = 1;
     }
 });
 
