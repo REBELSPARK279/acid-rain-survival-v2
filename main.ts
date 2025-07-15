@@ -18,6 +18,8 @@ mode directory
 15: 1p server status checker (server empty?)
 16: record view
 17: host died while in stats
+18: 2p server scanning
+19: 2p host waiting for guest
 */
 
 //FUNCTIONS
@@ -432,6 +434,26 @@ function gameoverResetVars() {
     dash = 0;
 }
 
+function connectionSuccessNoise() {
+    basic.clearScreen();
+    mode = 0;
+    music.play(music.stringPlayable("C D E F G A B C5 ", 480), music.PlaybackMode.InBackground);
+    basic.showIcon(IconNames.Yes);
+    basic.pause(1250);
+    music.play(music.tonePlayable(575, music.beat(BeatFraction.Breve)), music.PlaybackMode.InBackground);
+    showNum(3);
+    basic.pause(1000);
+    music.play(music.tonePlayable(575, music.beat(BeatFraction.Breve)), music.PlaybackMode.InBackground);
+    showNum(2);
+    basic.pause(1000);
+    music.play(music.tonePlayable(575, music.beat(BeatFraction.Breve)), music.PlaybackMode.InBackground);
+    showNum(1);
+    basic.pause(1000);
+    basic.clearScreen();
+    music.play(music.tonePlayable(850, music.beat(BeatFraction.Breve)), music.PlaybackMode.InBackground);
+    music.setTempo(120);
+}
+
 //VARIABLES
 
 let mode = 1;
@@ -611,23 +633,7 @@ basic.forever(function () {
         basic.pause(500);
         radio.sendString("1ppl-empty");
         if (emptyServerPingCount1p == 1) {
-            basic.clearScreen();
-            mode = 0;
-            music.play(music.stringPlayable("C D E F G A B C5 ", 480), music.PlaybackMode.InBackground);
-            basic.showIcon(IconNames.Yes);
-            basic.pause(1250);
-            music.play(music.tonePlayable(575, music.beat(BeatFraction.Breve)), music.PlaybackMode.InBackground);
-            showNum(3);
-            basic.pause(1000);
-            music.play(music.tonePlayable(575, music.beat(BeatFraction.Breve)), music.PlaybackMode.InBackground);
-            showNum(2);
-            basic.pause(1000);
-            music.play(music.tonePlayable(575, music.beat(BeatFraction.Breve)), music.PlaybackMode.InBackground);
-            showNum(1);
-            basic.pause(1000);
-            basic.clearScreen();
-            music.play(music.tonePlayable(850, music.beat(BeatFraction.Breve)), music.PlaybackMode.InBackground);
-            music.setTempo(120);
+            connectionSuccessNoise();
             mode = 5;
             led.plot(2, 4);
             emptyServerPingCount1p = 0;
@@ -647,6 +653,10 @@ radio.onReceivedString(function(receivedString:string) {
             radio.sendString("1ply-connect");
         } else if (receivedString == "1ppl-empty") {
             radio.sendString("1ply-occupied");
+        }
+    } else if ((mode == 7) || (mode == 8)) {
+        if (receivedString == "2jon-emptyCheck") {
+            radio.sendString("2pla-serverFull");
         }
     } else if (mode == 12) {
         if (receivedString == "1ply-connect") {
@@ -677,11 +687,42 @@ radio.onReceivedString(function(receivedString:string) {
             basic.pause(1500);
             mode = 4;
         }
+    } else if (mode == 18) {
+        if (receivedString == "2pla-serverFull") {
+            mode = 0;
+            basic.clearScreen();
+            basic.showLeds(`
+            # . . . #
+            . # . # .
+            . . # . .
+            . # . # .
+            # . . . #
+            `);
+            basic.pause(1250);
+            basic.clearScreen();
+            mode = 6;
+        } else if (receivedString == "2wfg-joinAsGuest") {
+            connectionSuccessNoise();
+            mode = 8
+        }
+    } else if (mode == 19) {
+        if (receivedString == "2jon-emptyCheck") {
+            radio.sendString("2wfg-joinAsGuest");
+            connectionSuccessNoise();
+            mode = 7;
+        }
     }
 });
 
 radio.onReceivedValue(function(name:string, value:number) {
-    if ((mode == 13) || (mode == 14)) {
+    if (mode == 8) {
+        if ((name == "2h-drp1") || (name == "2h-drp2") || (name == "2h-drp3") || (name == "2h-drp4")) {
+            dropGraphicProvider(value);
+        } else if (name == "2h-orb") {
+            orbitalDropX = value;
+            orbitalDropGraphicsProvider();
+        }
+    } else if ((mode == 13) || (mode == 14)) {
         if (name == "score") {
             statsScore = value;
             inactivityCount1p = 0;
@@ -900,6 +941,16 @@ input.onButtonPressed(Button.AB, function () {
             led.plot(x, 4);
             music.play(music.tonePlayable(525, music.beat(BeatFraction.Quarter)), music.PlaybackMode.InBackground);
         }
+    } else if (mode == 6) {
+        mode = 18;
+        basic.clearScreen();
+        radio.setGroup(page - 2);
+        for (let pingCount = 0; pingCount < 3; pingCount++) {
+            radio.sendString("2jon-emptyCheck");
+        }
+        if (mode == 6) {
+            mode = 19;
+        }
     } else if (mode == 9) {
         mode = 2;
     } else if ((mode == 10) || (mode == 17)) {
@@ -972,6 +1023,9 @@ loops.everyInterval(randint(500 / difficulty + 250, (500 / difficulty + 250) * 1
             if ((drop1x == drop2x) || (drop1x == drop3x) || (drop1x == drop4x) || (drop1x == orbitalDropX)) {
                 drop1x = -1;
             } else {
+                if (mode == 7) {
+                    radio.sendValue("2h-drp1", drop1x);
+                }
                 dropGraphicProvider(drop1x);
             }
         }
@@ -984,6 +1038,9 @@ loops.everyInterval(randint(500 / difficulty + 250, (500 / difficulty + 250) * 1
             if ((drop1x == drop2x) || (drop2x == drop3x) || (drop2x == drop4x) || (drop2x == orbitalDropX)) {
                 drop2x = -1;
             } else {
+                if (mode == 7) {
+                    radio.sendValue("2h-drp2", drop2x);
+                }
                 dropGraphicProvider(drop2x);
             }
         }
@@ -996,6 +1053,9 @@ loops.everyInterval(randint(500 / difficulty + 250, (500 / difficulty + 250) * 1
             if ((drop1x == drop3x) || (drop2x == drop3x) || (drop3x == drop4x) || (drop3x == orbitalDropX)) {
                 drop3x = -1;
             } else {
+                if (mode == 7) {
+                    radio.sendValue("2h-drp3", drop3x);
+                }
                 dropGraphicProvider(drop3x);
             }
         }
@@ -1008,6 +1068,9 @@ loops.everyInterval(randint(500 / difficulty + 250, (500 / difficulty + 250) * 1
             if ((drop1x == drop4x) || (drop4x == drop3x) || (drop2x == drop4x) || (drop4x == orbitalDropX)) {
                 drop4x = -1;
             } else {
+                if (mode == 7) {
+                    radio.sendValue("2h-drp4", drop4x);
+                }
                 dropGraphicProvider(drop4x);
             }
         }
@@ -1021,6 +1084,9 @@ loops.everyInterval(randint(orbitalCooldown / 2, orbitalCooldown), function() {
                 orbitalDropX = -1;
                 orbitalCooldown = 6000;
             } else {
+                if (mode == 7) {
+                    radio.sendValue("2h-orb", orbitalDropX);
+                }
                 orbitalDropGraphicsProvider();
             }
         }
