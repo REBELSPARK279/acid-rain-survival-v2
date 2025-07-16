@@ -324,6 +324,10 @@ function dropGraphicProvider(dropX:number) {
             drop4x = -1;
         }
     }
+    incDrop1x = -1;
+    incDrop2x = -1;
+    incDrop3x = -1;
+    incDrop4x = -1;
 }
 
 function orbitalDropGraphicsProvider() {
@@ -393,6 +397,7 @@ function orbitalDropGraphicsProvider() {
             radio.sendValue("score", score);
         }
     }
+    incOrbitalX = -1;
     orbitalDropX = -1;
     orbitalCooldown = 15000;
 }
@@ -478,6 +483,11 @@ let emptyServerPingCount1p = 0;
 let inactivityCount1p = 0;
 let dash = 0;
 let record = 0;
+let incDrop1x = -1;
+let incDrop2x = -1;
+let incDrop3x = -1;
+let incDrop4x = -1;
+let incOrbitalX = -1;
 
 radio.setGroup(0);
 radio.setTransmitPower(7);
@@ -644,6 +654,17 @@ basic.forever(function () {
         showNum(record);
     } else if (mode == 17) {
         showNum(statsScore);
+    } else if (mode == 19) {
+       basic.showLeds(`
+       .....
+       .....
+       .....
+       .....
+       #.#.#
+       `);
+       basic.pause(1000);
+       showNum(page - 1);
+       basic.pause(1000);
     }
 });
 
@@ -717,10 +738,17 @@ radio.onReceivedString(function(receivedString:string) {
 radio.onReceivedValue(function(name:string, value:number) {
     if (mode == 8) {
         if ((name == "2h-drp1") || (name == "2h-drp2") || (name == "2h-drp3") || (name == "2h-drp4")) {
-            dropGraphicProvider(value);
+            if (incDrop1x == -1) {
+                incDrop1x = value;
+            } else if (incDrop2x == -1) {
+                incDrop2x = value;
+            } else if (incDrop3x == -1) {
+                incDrop3x = value;
+            } else if (incDrop4x == -1) {
+                incDrop4x = value;
+            }
         } else if (name == "2h-orb") {
-            orbitalDropX = value;
-            orbitalDropGraphicsProvider();
+            incOrbitalX = value;
         }
     } else if ((mode == 13) || (mode == 14)) {
         if (name == "score") {
@@ -946,9 +974,25 @@ input.onButtonPressed(Button.AB, function () {
         basic.clearScreen();
         radio.setGroup(page - 2);
         for (let pingCount = 0; pingCount < 3; pingCount++) {
-            radio.sendString("2jon-emptyCheck");
+            if (mode == 18) {
+                led.toggle(0,4);
+                radio.sendString("2jon-emptyCheck");
+                basic.pause(500);
+            }
+            if (mode == 18) {
+                led.toggle(2, 4);
+                radio.sendString("2jon-emptyCheck");
+                basic.pause(500);
+            }
+            if (mode == 18) {
+                led.toggle(4, 4);
+                radio.sendString("2jon-emptyCheck");
+                basic.pause(500);
+            }
         }
-        if (mode == 6) {
+        if (mode == 18) {
+            basic.showIcon(IconNames.Yes);
+            basic.pause(50);
             mode = 19;
         }
     } else if (mode == 9) {
@@ -1095,5 +1139,31 @@ loops.everyInterval(randint(orbitalCooldown / 2, orbitalCooldown), function() {
 loops.everyInterval(100, function() {
     if (((mode == 5) || (mode == 7) || (mode == 8)) && (dash == 1)) {
         led.toggle(x, 4);
+    }
+});
+loops.everyInterval(50, function() {
+    if ((incDrop1x != -1) && (mode == 8)) {
+        dropGraphicProvider(incDrop1x);
+    }
+});
+loops.everyInterval(50, function () {
+    if ((incDrop2x != -1) && (mode == 8)) {
+        dropGraphicProvider(incDrop2x);
+    }
+});
+loops.everyInterval(50, function () {
+    if ((incDrop3x != -1) && (mode == 8)) {
+        dropGraphicProvider(incDrop3x);
+    }
+});
+loops.everyInterval(50, function () {
+    if ((incDrop4x != -1) && (mode == 8)) {
+        dropGraphicProvider(incDrop4x);
+    }
+});
+loops.everyInterval(50, function () {
+    if ((incOrbitalX != -1) && (mode == 8)) {
+        orbitalDropX = incOrbitalX;
+        orbitalDropGraphicsProvider();
     }
 });
