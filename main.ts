@@ -1078,6 +1078,8 @@ input.onButtonPressed(Button.AB, function () {
         basic.clearScreen();
         radio.setGroup(0);
         gameoverResetVars();
+        mode = 1;
+        page = 2;
     }
 });
 
