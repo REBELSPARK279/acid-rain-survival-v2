@@ -20,6 +20,7 @@ mode directory
 17: host died while in stats
 18: 2p server scanning
 19: 2p host waiting for guest
+20: 2p gameover
 */
 
 //FUNCTIONS
@@ -231,8 +232,21 @@ function dropGraphicProvider(dropX:number) {
                 basic.pause(500);
                 basic.clearScreen();
                 mode = 10;
-            } else {
-
+            } else if ((mode == 7) || (mode == 8)) {
+                mode = 0;
+                basic.pause(35);
+                drop1x = -1;
+                drop2x = -1;
+                drop3x = -1;
+                drop4x = -1;
+                orbitalDropX = -1;
+                basic.clearScreen();
+                music.stopAllSounds();
+                basic.showIcon(IconNames.Sad);
+                radio.sendString("2p-death");
+                music.play(music.stringPlayable("C5 B A G F E D C ", 120), music.PlaybackMode.UntilDone);
+                basic.pause(500);
+                mode = 20;
             }
         }
     }
@@ -309,7 +323,11 @@ function dropGraphicProvider(dropX:number) {
     }
     if ((mode == 5) || (mode == 7) || (mode == 8)) {
         basic.pause(100);
-        score += randint(0, 1);
+        if (mode == 5) {
+            score += randint(0, 1);
+        } else {
+            score++;
+        }
         difficulty = (0.0279 * score) + 1;
         if ((mode == 5) && (offline == 0)) {
             radio.sendValue("score", score);
@@ -322,12 +340,16 @@ function dropGraphicProvider(dropX:number) {
             drop3x = -1;
         } else if(dropX == drop4x) {
             drop4x = -1;
+        } else if (dropX == incDrop1x) {
+            incDrop1x = -1;
+        } else if (dropX == incDrop2x) {
+            incDrop2x = -1;
+        } else if (dropX == incDrop3x) {
+            incDrop3x = -1;
+        } else if (dropX == incDrop4x) {
+            incDrop4x = -1;
         }
     }
-    incDrop1x = -1;
-    incDrop2x = -1;
-    incDrop3x = -1;
-    incDrop4x = -1;
 }
 
 function orbitalDropGraphicsProvider() {
@@ -351,8 +373,21 @@ function orbitalDropGraphicsProvider() {
                 basic.pause(500);
                 basic.clearScreen();
                 mode = 10;
-            } else {
-
+            } else if ((mode == 7) || (mode == 8)) {
+                mode = 0;
+                basic.pause(35);
+                drop1x = -1;
+                drop2x = -1;
+                drop3x = -1;
+                drop4x = -1;
+                orbitalDropX = -1;
+                basic.clearScreen();
+                music.stopAllSounds();
+                basic.showIcon(IconNames.Sad);
+                radio.sendString("2p-death");
+                music.play(music.stringPlayable("C5 B A G F E D C ", 120), music.PlaybackMode.UntilDone);
+                basic.pause(500);
+                mode = 20;
             }
         }
     }
@@ -678,6 +713,21 @@ radio.onReceivedString(function(receivedString:string) {
     } else if ((mode == 7) || (mode == 8)) {
         if (receivedString == "2jon-emptyCheck") {
             radio.sendString("2pla-serverFull");
+        } else if (receivedString == "2p-death") {
+            mode = 0;
+            basic.pause(35);
+            drop1x = -1;
+            drop2x = -1;
+            drop3x = -1;
+            drop4x = -1;
+            orbitalDropX = -1;
+            basic.clearScreen();
+            music.stopAllSounds();
+            display("trophy");
+            music.play(music.stringPlayable("D E F G - F G - ", 240), music.PlaybackMode.UntilDone);
+            music.setTempo(120);
+            basic.pause(500);
+            mode = 20;
         }
     } else if (mode == 12) {
         if (receivedString == "1ply-connect") {
@@ -725,28 +775,28 @@ radio.onReceivedString(function(receivedString:string) {
         } else if (receivedString == "2wfg-joinAsGuest") {
             connectionSuccessNoise();
             mode = 8
+            led.plot(2,4);
         }
     } else if (mode == 19) {
         if (receivedString == "2jon-emptyCheck") {
             radio.sendString("2wfg-joinAsGuest");
             connectionSuccessNoise();
             mode = 7;
+            led.plot(2, 4);
         }
     }
 });
 
 radio.onReceivedValue(function(name:string, value:number) {
     if (mode == 8) {
-        if ((name == "2h-drp1") || (name == "2h-drp2") || (name == "2h-drp3") || (name == "2h-drp4")) {
-            if (incDrop1x == -1) {
-                incDrop1x = value;
-            } else if (incDrop2x == -1) {
-                incDrop2x = value;
-            } else if (incDrop3x == -1) {
-                incDrop3x = value;
-            } else if (incDrop4x == -1) {
-                incDrop4x = value;
-            }
+        if (name == "2h-drp1") {
+            incDrop1x = value;
+        } else if (name == "2h-drp2") {
+            incDrop2x = value;
+        } else if (name == "2h-drp3") {
+            incDrop3x = value;
+        } else if (name == "2h-drp4") {
+            incDrop4x = value;
         } else if (name == "2h-orb") {
             incOrbitalX = value;
         }
@@ -1024,6 +1074,10 @@ input.onButtonPressed(Button.AB, function () {
         mode = 13;
     } else if (mode == 16) {
         mode = 1;
+    } else if (mode == 20) {
+        basic.clearScreen();
+        radio.setGroup(0);
+        gameoverResetVars();
     }
 });
 
