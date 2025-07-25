@@ -1020,30 +1020,35 @@ input.onButtonPressed(Button.AB, function () {
             music.play(music.tonePlayable(525, music.beat(BeatFraction.Quarter)), music.PlaybackMode.InBackground);
         }
     } else if (mode == 6) {
-        mode = 18;
-        basic.clearScreen();
-        radio.setGroup(page - 2);
-        for (let pingCount = 0; pingCount < 3; pingCount++) {
-            if (mode == 18) {
-                led.toggle(0,4);
-                radio.sendString("2jon-emptyCheck");
-                basic.pause(500);
+        if (page == 1) {
+            mode = 3;
+            page = 3;
+        } else {
+            mode = 18;
+            basic.clearScreen();
+            radio.setGroup(page - 2);
+            for (let pingCount = 0; pingCount < 3; pingCount++) {
+                if (mode == 18) {
+                    led.toggle(0,4);
+                    radio.sendString("2jon-emptyCheck");
+                    basic.pause(500);
+                }
+                if (mode == 18) {
+                    led.toggle(2, 4);
+                    radio.sendString("2jon-emptyCheck");
+                    basic.pause(500);
+                }
+                if (mode == 18) {
+                    led.toggle(4, 4);
+                    radio.sendString("2jon-emptyCheck");
+                    basic.pause(500);
+                }
             }
             if (mode == 18) {
-                led.toggle(2, 4);
-                radio.sendString("2jon-emptyCheck");
-                basic.pause(500);
+                basic.showIcon(IconNames.Yes);
+                basic.pause(50);
+                mode = 19;
             }
-            if (mode == 18) {
-                led.toggle(4, 4);
-                radio.sendString("2jon-emptyCheck");
-                basic.pause(500);
-            }
-        }
-        if (mode == 18) {
-            basic.showIcon(IconNames.Yes);
-            basic.pause(50);
-            mode = 19;
         }
     } else if (mode == 9) {
         mode = 2;
@@ -1062,6 +1067,8 @@ input.onButtonPressed(Button.AB, function () {
             statsScore = 0;
             statsCD = 0;
         }
+    } else if (mode == 12) {
+        mode = 11;
     } else if (mode == 13) {
         if (page == 1) {
             mode = 11;
@@ -1074,6 +1081,10 @@ input.onButtonPressed(Button.AB, function () {
         mode = 13;
     } else if (mode == 16) {
         mode = 1;
+    } else if ((mode == 18) || (mode == 19)) {
+        basic.clearScreen();
+        mode = 6;
+        radio.setGroup(0);
     } else if (mode == 20) {
         basic.clearScreen();
         radio.setGroup(0);
