@@ -21,6 +21,9 @@ mode directory
 18: 2p server scanning
 19: 2p host waiting for guest
 20: 2p gameover
+21: select record type
+22: difficulty selector 1p offline
+23: difficulty selector 1p online
 */
 
 //FUNCTIONS
@@ -41,6 +44,46 @@ function display(type:string) {
             ..#..
             ..#..
             .###.
+        `);
+    } else if (type == "difficulty.free") {
+        basic.showLeds(`
+        .....
+        .....
+        .....
+        .....
+        #####
+        `);
+    } else if (type == "difficulty.easy") {
+        basic.showLeds(`
+        .....
+        .....
+        .....
+        #####
+        #####
+        `);
+    } else if (type == "difficulty.normal") {
+        basic.showLeds(`
+        .....
+        .....
+        #####
+        #####
+        #####
+        `);
+    } else if (type == "difficulty.hard") {
+        basic.showLeds(`
+        .....
+        #####
+        #####
+        #####
+        #####
+        `);
+    } else if (type == "difficulty.insane") {
+        basic.showLeds(`
+        #####
+        #####
+        #####
+        #####
+        #####
         `);
     }
 }
@@ -187,8 +230,8 @@ function showNum(number:number) {
         #.###
         #.#.#
         #...#
-        #...#
-        #...#
+        #..#.
+        #..#.
         `);
     } else if (number == 18) {
         basic.showLeds(`
@@ -328,10 +371,7 @@ function dropGraphicProvider(dropX:number) {
         } else {
             score++;
         }
-        difficulty = (0.0279 * score) + 1;
-        if ((mode == 5) && (offline == 0)) {
-            radio.sendValue("score", score);
-        }
+        difficulty = (difficultyValue * score) + 1;
         if (dropX == drop1x) {
             drop1x = -1;
         } else if (dropX == drop2x) {
@@ -348,6 +388,9 @@ function dropGraphicProvider(dropX:number) {
             incDrop3x = -1;
         } else if (dropX == incDrop4x) {
             incDrop4x = -1;
+        }
+        if ((mode == 5) && (offline == 0)) {
+            radio.sendValue("score", score);
         }
     }
 }
@@ -427,14 +470,14 @@ function orbitalDropGraphicsProvider() {
     led.unplot(orbitalDropX, 4);
     if ((mode == 5) || (mode == 7) || (mode == 8)) {
         score++;
-        difficulty = (0.0279 * score) + 1;
-        if ((mode == 5) && (offline == 0)) {
-            radio.sendValue("score", score);
-        }
+        difficulty = (difficultyValue * score) + 1;
     }
     incOrbitalX = -1;
     orbitalDropX = -1;
     orbitalCooldown = 15000;
+    if ((mode == 5) && (offline == 0)) {
+        radio.sendValue("score", score);
+    }
 }
 
 function updateStats(update:string) {
@@ -452,8 +495,20 @@ function errorSound() {
 }
 
 function gameoverResetVars() {
-    if (score > record) {
-        record = score;
+    let recordIndex:number;
+    if (selectedDifficulty == "free") {
+        recordIndex = 0;
+    } else if (selectedDifficulty == "easy") {
+        recordIndex = 1;
+    } else if (selectedDifficulty == "normal") {
+        recordIndex = 2;
+    } else if (selectedDifficulty == "hard") {
+        recordIndex = 3;
+    } else if (selectedDifficulty == "insane") {
+        recordIndex = 4;
+    }
+    if (score > record[recordIndex]) {
+        record[recordIndex] = score;
     }
     x = 2;
     dashCD = 0;
@@ -472,6 +527,8 @@ function gameoverResetVars() {
     emptyServerPingCount1p = 0;
     inactivityCount1p = 0;
     dash = 0;
+    selectedDifficulty = "";
+    difficultyValue = null;
 }
 
 function connectionSuccessNoise() {
@@ -517,12 +574,16 @@ let offline = 0;
 let emptyServerPingCount1p = 0;
 let inactivityCount1p = 0;
 let dash = 0;
-let record = 0;
+let record = [0,0,0,0,0];
 let incDrop1x = -1;
 let incDrop2x = -1;
 let incDrop3x = -1;
 let incDrop4x = -1;
 let incOrbitalX = -1;
+let selectedDifficulty:string;
+let recordDifficultyDisplay:string;
+let difficultyValue:number = null;
+let statsDifficulty:string;
 
 radio.setGroup(0);
 radio.setTransmitPower(7);
@@ -657,12 +718,22 @@ basic.forever(function () {
             #####
             ...#.
             ..#..`);
+        } else if (page == 5) {
+            basic.showLeds(`
+            #....
+            ##...
+            ###..
+            ####.
+            #####
+            `);
         }
     } else if (mode == 14) {
         if (page == 2) {
             showNum(statsScore);
         } else if (page == 3) {
             showNum(statsCD);
+        } else if (page == 5) {
+            display("difficulty." + statsDifficulty);
         }
     } else if (mode == 15) {
         basic.showLeds(`
@@ -677,16 +748,26 @@ basic.forever(function () {
         led.plot(4, 4);
         basic.pause(500);
         radio.sendString("1ppl-empty");
-        if (emptyServerPingCount1p == 1) {
-            connectionSuccessNoise();
-            mode = 5;
-            led.plot(2, 4);
+        if (emptyServerPingCount1p == 2) {
+            music.play(music.stringPlayable("C D E F G A B C5 ", 480), music.PlaybackMode.InBackground);
+            mode = 23;
+            page = 4;
             emptyServerPingCount1p = 0;
         } else {
             emptyServerPingCount1p++;
         }
     } else if (mode == 16) {
-        showNum(record);
+        if (recordDifficultyDisplay == "free") {
+            showNum(record[0]);
+        } else if (recordDifficultyDisplay == "easy") {
+            showNum(record[1]);
+        } else if (recordDifficultyDisplay == "normal") {
+            showNum(record[2]);
+        } else if (recordDifficultyDisplay == "hard") {
+            showNum(record[3]);
+        } else if (recordDifficultyDisplay == "insane") {
+            showNum(record[4]);
+        }
     } else if (mode == 17) {
         showNum(statsScore);
     } else if (mode == 19) {
@@ -700,15 +781,34 @@ basic.forever(function () {
        basic.pause(1000);
        showNum(page - 1);
        basic.pause(1000);
+    } else if ((mode == 21) || (mode == 22) || (mode == 23)) {
+        if (page == 1) {
+            display("back_arrow");
+        } else if (page == 2) {
+            display("difficulty.free");
+        } else if (page == 3) {
+            display("difficulty.easy");
+        } else if (page == 4) {
+            display("difficulty.normal");
+        } else if (page == 5) {
+            display("difficulty.hard");
+        } else if (page == 6) {
+            display("difficulty.insane");
+        }
     }
 });
 
 radio.onReceivedString(function(receivedString:string) {
-    if (mode == 5) {
+    if ((mode == 5) || (mode == 23)) {
         if (receivedString == "1sts-connecting") {
             radio.sendString("1ply-connect");
+            if (mode == 5) {
+                radio.sendValue(selectedDifficulty, 11279279);
+            }
         } else if (receivedString == "1ppl-empty") {
             radio.sendString("1ply-occupied");
+        } else if (receivedString == "1sts-uthere?") {
+            radio.sendString("1ply-imhere");
         }
     } else if ((mode == 7) || (mode == 8)) {
         if (receivedString == "2jon-emptyCheck") {
@@ -744,6 +844,8 @@ radio.onReceivedString(function(receivedString:string) {
             basic.pause(500);
             basic.clearScreen();
             mode = 17;
+        } else if (receivedString == "1ply-imhere") {
+            inactivityCount1p = 0;
         }
     } else if (mode == 15) {
         if (receivedString == "1ply-occupied") {
@@ -807,12 +909,15 @@ radio.onReceivedValue(function(name:string, value:number) {
         } else if (name == "cooldown") {
             statsCD = value;
             inactivityCount1p = 0;
+        } else if (value == 11279279) {
+            statsDifficulty = name;
         }
     }
 });
 
 input.onButtonPressed(Button.A, function () {
-    if (((mode == 1) || (mode == 2) || (mode == 3)) && (page != 1)) {
+    if (((mode == 1) || (mode == 2) || (mode == 3) || (mode == 21) || (mode == 22) ||
+     (mode == 23)) && (page != 1)) {
         page--;
     } else if (mode == 4) {
         if (page == 1) {
@@ -937,9 +1042,11 @@ input.onButtonPressed(Button.B, function () {
         music.play(music.tonePlayable(392, music.beat(BeatFraction.Whole)), music.PlaybackMode.InBackground);
         volumeMemory = volume;
     } else if (mode == 13) {
-        if (page < 4) {
+        if (page < 5) {
             page++;
         }
+    } else if (((mode == 21) || (mode== 22) || (mode == 23)) && (page != 6)) {
+        page++;
     }
 });
 
@@ -951,7 +1058,8 @@ input.onButtonPressed(Button.AB, function () {
         } else if (page == 2) {
             mode = 3;
         } else if (page == 3) {
-            mode = 16;
+            mode = 21;
+            page = 4;
         } else if (page == 4) {
             mode = 11;
             page = 2;
@@ -998,9 +1106,9 @@ input.onButtonPressed(Button.AB, function () {
             page = 2;
         } else if (page == 2) {
             basic.clearScreen();
-            mode = 5;
+            mode = 22;
+            page = 4;
             offline = 1;
-            led.plot(2, 4);
         } else {
             basic.clearScreen();
             mode = 15;
@@ -1080,7 +1188,7 @@ input.onButtonPressed(Button.AB, function () {
     } else if (mode == 14) {
         mode = 13;
     } else if (mode == 16) {
-        mode = 1;
+        mode = 21;
     } else if ((mode == 18) || (mode == 19)) {
         basic.clearScreen();
         mode = 6;
@@ -1091,6 +1199,53 @@ input.onButtonPressed(Button.AB, function () {
         gameoverResetVars();
         mode = 1;
         page = 2;
+    } else if (mode == 21) {
+        if (page == 1) {
+            mode = 1;
+            page = 3;
+        } else {
+            mode = 16;
+            if (page == 2) {
+                recordDifficultyDisplay = "free";
+            } else if (page == 3) {
+                recordDifficultyDisplay = "easy";
+            } else if (page == 4) {
+                recordDifficultyDisplay = "normal";
+            } else if (page == 5) {
+                recordDifficultyDisplay = "hard";
+            } else if (page == 6) {
+                recordDifficultyDisplay = "insane";
+            }
+        }
+    } else if ((mode == 22) || (mode == 23)) {
+        if (page == 1) {
+            mode = 4;
+            page = 2;
+        } else {
+            basic.clearScreen();
+            if (page == 2) {
+                selectedDifficulty = "free";
+                difficultyValue = 0.008;
+            } else if (page == 3) {
+                selectedDifficulty = "easy";
+                difficultyValue = 0.0145;
+            } else if (page == 4) {
+                selectedDifficulty = "normal";
+                difficultyValue = 0.0279;
+            } else if (page == 5) {
+                selectedDifficulty = "hard";
+                difficultyValue = 0.06;
+            } else if (page == 6) {
+                selectedDifficulty = "insane";
+                difficultyValue = 0.13;
+            }
+            if (mode == 23) {
+                radio.sendValue(selectedDifficulty, 11279279);
+            }
+            connectionSuccessNoise();
+            mode = 5;
+            led.plot(2, 4);
+        }
     }
 });
 
@@ -1098,35 +1253,57 @@ loops.everyInterval(1000, function() {
     if ((mode == 13) || (mode == 14)) {
         inactivityCount1p++;
         if (inactivityCount1p >= 10) {
-            mode = 0;
-            for (let i = 0; i < 2; i++) {
-                basic.clearScreen();
-                basic.showLeds(`
-                # # # # #
-                . # # # .
-                . . # . .
-                . # # # .
-                # # # # #
-                `);
-                basic.pause(750);
-                basic.clearScreen();
-                basic.showLeds(`
-                . . # . .
-                . . # . .
-                . . # . .
-                . . . . .
-                . . # . .
-                `);
-                basic.pause(750);
+            radio.sendString("1sts-uthere?");
+            if (inactivityCount1p > 12) {
+                mode = 0;
+                for (let i = 0; i < 2; i++) {
+                    basic.clearScreen();
+                    basic.showLeds(`
+                    # # # # #
+                    . # # # .
+                    . . # . .
+                    . # # # .
+                    # # # # #
+                    `);
+                    basic.pause(750);
+                    basic.clearScreen();
+                    basic.showLeds(`
+                    . . # . .
+                    . . # . .
+                    . . # . .
+                    . . . . .
+                    . . # . .
+                    `);
+                    basic.pause(750);
+                }
+                basic.pause(500);
+                page = 2;
+                mode = 11;
+                inactivityCount1p = 0;
             }
-            basic.pause(500);
-            page = 2;
-            mode = 11;
-            inactivityCount1p = 0;
         }
     }
 });
 
+control.inBackground(function() {
+    while (true) {
+        basic.pause(randint(500 / difficulty + 250, (500 / difficulty + 250) * 10));
+        if ((mode == 5) || (mode == 7)) {
+            if (drop1x == -1) {
+                drop1x = randint(0, 4);
+                if ((drop1x == drop2x) || (drop1x == drop3x) || (drop1x == drop4x) || (drop1x == orbitalDropX)) {
+                    drop1x = -1;
+                } else {
+                    if (mode == 7) {
+                        radio.sendValue("2h-drp1", drop1x);
+                    }
+                    dropGraphicProvider(drop1x);
+                }
+            }
+        }
+    }
+});
+/* Deprecated /*
 loops.everyInterval(randint(500 / difficulty + 250, (500 / difficulty + 250) * 12), function () {
     if ((mode == 5) || (mode == 7)) {
         if (drop1x == -1) {
@@ -1142,6 +1319,26 @@ loops.everyInterval(randint(500 / difficulty + 250, (500 / difficulty + 250) * 1
         }
     }
 });
+*/
+control.inBackground(function() {
+    while (true) {
+        basic.pause(randint(500 / difficulty + 250, (500 / difficulty + 250) * 10));
+        if ((mode == 5) || (mode == 7)) {
+            if (drop2x == -1) {
+                drop2x = randint(0, 4);
+                if ((drop1x == drop2x) || (drop2x == drop3x) || (drop2x == drop4x) || (drop2x == orbitalDropX)) {
+                    drop2x = -1;
+                } else {
+                    if (mode == 7) {
+                        radio.sendValue("2h-drp2", drop2x);
+                    }
+                    dropGraphicProvider(drop2x);
+                }
+            }
+        }
+    }
+});
+/* Deprecated /*
 loops.everyInterval(randint(500 / difficulty + 250, (500 / difficulty + 250) * 12), function () {
     if ((mode == 5) || (mode == 7)) {
         if (drop2x == -1) {
@@ -1157,6 +1354,26 @@ loops.everyInterval(randint(500 / difficulty + 250, (500 / difficulty + 250) * 1
         }
     }
 });
+*/
+control.inBackground(function() {
+    while (true) {
+        basic.pause(randint(500 / difficulty + 250, (500 / difficulty + 250) * 10));
+        if ((mode == 5) || (mode == 7)) {
+            if (drop3x == -1) {
+                drop3x = randint(0, 4);
+                if ((drop1x == drop3x) || (drop2x == drop3x) || (drop3x == drop4x) || (drop3x == orbitalDropX)) {
+                    drop3x = -1;
+                } else {
+                    if (mode == 7) {
+                        radio.sendValue("2h-drp3", drop3x);
+                    }
+                    dropGraphicProvider(drop3x);
+                }
+            }
+        }
+    }
+});
+/* Deprecated /*
 loops.everyInterval(randint(500 / difficulty + 250, (500 / difficulty + 250) * 12), function () {
     if ((mode == 5) || (mode == 7)) {
         if (drop3x == -1) {
@@ -1172,6 +1389,26 @@ loops.everyInterval(randint(500 / difficulty + 250, (500 / difficulty + 250) * 1
         }
     }
 });
+*/
+control.inBackground(function() {
+    while (true) {
+        basic.pause(randint(500 / difficulty + 250, (500 / difficulty + 250) * 10));
+        if ((mode == 5) || (mode == 7)) {
+            if (drop4x == -1) {
+                drop4x = randint(0, 4);
+                if ((drop1x == drop4x) || (drop4x == drop3x) || (drop2x == drop4x) || (drop4x == orbitalDropX)) {
+                    drop4x = -1;
+                } else {
+                    if (mode == 7) {
+                        radio.sendValue("2h-drp4", drop4x);
+                    }
+                    dropGraphicProvider(drop4x);
+                }
+            }
+        }
+    }
+});
+/* Deprecated /*
 loops.everyInterval(randint(500 / difficulty + 250, (500 / difficulty + 250) * 12), function () {
     if ((mode == 5) || (mode == 7)) {
         if (drop4x == -1) {
@@ -1187,6 +1424,27 @@ loops.everyInterval(randint(500 / difficulty + 250, (500 / difficulty + 250) * 1
         }
     }
 });
+*/
+control.inBackground(function() {
+    while (true) {
+        basic.pause(randint(orbitalCooldown / 2, orbitalCooldown));
+        if ((mode == 5) || (mode == 7)) {
+            if (orbitalDropX == -1) {
+                orbitalDropX = randint(0, 4);
+                if ((orbitalDropX == drop1x) || (orbitalDropX == drop2x) || (orbitalDropX == drop3x) || (orbitalDropX == drop4x)) {
+                    orbitalDropX = -1;
+                    orbitalCooldown = 6000;
+                } else {
+                    if (mode == 7) {
+                        radio.sendValue("2h-orb", orbitalDropX);
+                    }
+                    orbitalDropGraphicsProvider();
+                }
+            }
+        }
+    }
+});
+/* Deprecated /*
 loops.everyInterval(randint(orbitalCooldown / 2, orbitalCooldown), function() {
     if ((mode == 5) || (mode == 7)) {
         if (orbitalDropX == -1) {
@@ -1203,6 +1461,7 @@ loops.everyInterval(randint(orbitalCooldown / 2, orbitalCooldown), function() {
         }
     }
 });
+*/
 loops.everyInterval(100, function() {
     if (((mode == 5) || (mode == 7) || (mode == 8)) && (dash == 1)) {
         led.toggle(x, 4);
