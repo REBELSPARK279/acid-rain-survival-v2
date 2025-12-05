@@ -24,6 +24,8 @@ mode directory
 21: select record type
 22: difficulty selector 1p offline
 23: difficulty selector 1p online
+24: difficulty selector 2p
+25: 2p guest wait for host select difficulty
 */
 
 //FUNCTIONS
@@ -531,24 +533,28 @@ function gameoverResetVars() {
     difficultyValue = null;
 }
 
-function connectionSuccessNoise() {
+function connectionSuccessNoise(countdown:boolean) {
     basic.clearScreen();
     mode = 0;
     music.play(music.stringPlayable("C D E F G A B C5 ", 480), music.PlaybackMode.InBackground);
     basic.showIcon(IconNames.Yes);
     basic.pause(1250);
-    music.play(music.tonePlayable(575, music.beat(BeatFraction.Breve)), music.PlaybackMode.InBackground);
-    showNum(3);
-    basic.pause(1000);
-    music.play(music.tonePlayable(575, music.beat(BeatFraction.Breve)), music.PlaybackMode.InBackground);
-    showNum(2);
-    basic.pause(1000);
-    music.play(music.tonePlayable(575, music.beat(BeatFraction.Breve)), music.PlaybackMode.InBackground);
-    showNum(1);
-    basic.pause(1000);
-    basic.clearScreen();
-    music.play(music.tonePlayable(850, music.beat(BeatFraction.Breve)), music.PlaybackMode.InBackground);
-    music.setTempo(120);
+    if (countdown) {
+        music.play(music.tonePlayable(575, music.beat(BeatFraction.Breve)), music.PlaybackMode.InBackground);
+        showNum(3);
+        basic.pause(1000);
+        music.play(music.tonePlayable(575, music.beat(BeatFraction.Breve)), music.PlaybackMode.InBackground);
+        showNum(2);
+        basic.pause(1000);
+        music.play(music.tonePlayable(575, music.beat(BeatFraction.Breve)), music.PlaybackMode.InBackground);
+        showNum(1);
+        basic.pause(1000);
+        basic.clearScreen();
+        music.play(music.tonePlayable(850, music.beat(BeatFraction.Breve)), music.PlaybackMode.InBackground);
+        music.setTempo(120);
+    } else {
+        basic.clearScreen();
+    }
 }
 
 //VARIABLES
@@ -584,6 +590,8 @@ let selectedDifficulty:string;
 let recordDifficultyDisplay:string;
 let difficultyValue:number = null;
 let statsDifficulty:string;
+let player2here:boolean = false;
+let currentServer:number;
 
 radio.setGroup(0);
 radio.setTransmitPower(7);
@@ -779,9 +787,9 @@ basic.forever(function () {
        #.#.#
        `);
        basic.pause(1000);
-       showNum(page - 1);
+       showNum(currentServer);
        basic.pause(1000);
-    } else if ((mode == 21) || (mode == 22) || (mode == 23)) {
+    } else if ((mode == 21) || (mode == 22) || (mode == 23) || (mode == 24)) {
         if (page == 1) {
             display("back_arrow");
         } else if (page == 2) {
@@ -795,6 +803,14 @@ basic.forever(function () {
         } else if (page == 6) {
             display("difficulty.insane");
         }
+    } else if (mode == 25) {
+        basic.showLeds(`
+        . . . . .
+        . . . . .
+        . . . . .
+        . . . . .
+        # . # . #
+        `);
     }
 });
 
@@ -874,17 +890,25 @@ radio.onReceivedString(function(receivedString:string) {
             basic.pause(1250);
             basic.clearScreen();
             mode = 6;
-        } else if (receivedString == "2wfg-joinAsGuest") {
-            connectionSuccessNoise();
-            mode = 8
-            led.plot(2,4);
+        } else if (receivedString == "2wfg-joinAndWait") {
+            connectionSuccessNoise(false);
+            mode = 25;
         }
     } else if (mode == 19) {
         if (receivedString == "2jon-emptyCheck") {
-            radio.sendString("2wfg-joinAsGuest");
-            connectionSuccessNoise();
+            radio.sendValue("2wfgJoin", difficultyValue);
+            connectionSuccessNoise(true);
             mode = 7;
             led.plot(2, 4);
+        }
+    } else if (mode == 24) {
+        if (receivedString == "2jon-emptyCheck") {
+            if (!player2here) {
+                radio.sendString("2wfg-joinAndWait");
+                player2here = true;
+            }
+        } else {
+            radio.sendString("2pla-serverFull");
         }
     }
 });
@@ -912,12 +936,19 @@ radio.onReceivedValue(function(name:string, value:number) {
         } else if (value == 11279279) {
             statsDifficulty = name;
         }
+    } else if (mode == 18) {
+        if (name == "2wfgJoin") {
+            difficultyValue = value;
+            connectionSuccessNoise(true);
+            mode = 8
+            led.plot(2, 4);
+        }
     }
 });
 
 input.onButtonPressed(Button.A, function () {
     if (((mode == 1) || (mode == 2) || (mode == 3) || (mode == 21) || (mode == 22) ||
-     (mode == 23)) && (page != 1)) {
+     (mode == 23) || (mode == 24)) && (page != 1)) {
         page--;
     } else if (mode == 4) {
         if (page == 1) {
@@ -932,7 +963,7 @@ input.onButtonPressed(Button.A, function () {
             page--;
         }
     } else if ((mode == 5) || (mode == 7) || (mode == 8)) {
-        if (dash == 0) {
+        /*if (dash == 0) {
             if (x > 0) {
                 x--;
                 for (let i = 0; i < 5; i++) {
@@ -966,7 +997,8 @@ input.onButtonPressed(Button.A, function () {
         if ((mode == 5) && (offline == 0)) {
             radio.sendValue("LR", 0);
             radio.sendValue("cooldown", dashCD);
-        }
+        }*/
+        x = -1;
     } else if ((mode == 9) && (volume > 0)) {
         volume--;
         music.setVolume(volume * 25);
@@ -1045,7 +1077,8 @@ input.onButtonPressed(Button.B, function () {
         if (page < 5) {
             page++;
         }
-    } else if (((mode == 21) || (mode== 22) || (mode == 23)) && (page != 6)) {
+    } else if (((mode == 21) || (mode == 22) || (mode == 23) || (mode == 24))
+     && (page != 6)) {
         page++;
     }
 });
@@ -1134,7 +1167,8 @@ input.onButtonPressed(Button.AB, function () {
         } else {
             mode = 18;
             basic.clearScreen();
-            radio.setGroup(page - 2);
+            radio.setGroup(page - 1);
+            currentServer = page - 1;
             for (let pingCount = 0; pingCount < 3; pingCount++) {
                 if (mode == 18) {
                     led.toggle(0,4);
@@ -1152,10 +1186,12 @@ input.onButtonPressed(Button.AB, function () {
                     basic.pause(500);
                 }
             }
+            basic.pause(250);
             if (mode == 18) {
                 basic.showIcon(IconNames.Yes);
                 basic.pause(50);
-                mode = 19;
+                mode = 24;
+                page = 2;
             }
         }
     } else if (mode == 9) {
@@ -1217,10 +1253,17 @@ input.onButtonPressed(Button.AB, function () {
                 recordDifficultyDisplay = "insane";
             }
         }
-    } else if ((mode == 22) || (mode == 23)) {
+    } else if ((mode == 22) || (mode == 23) || (mode == 24)) {
         if (page == 1) {
-            mode = 4;
-            page = 2;
+            if ((mode == 22) || (mode == 23)) {
+                mode = 4;
+                page = 2;
+            } else {
+                mode = 6;
+                page = currentServer;
+                currentServer = null;
+                radio.setGroup(0);
+            }
         } else {
             basic.clearScreen();
             if (page == 2) {
@@ -1242,9 +1285,20 @@ input.onButtonPressed(Button.AB, function () {
             if (mode == 23) {
                 radio.sendValue(selectedDifficulty, 11279279);
             }
-            connectionSuccessNoise();
-            mode = 5;
-            led.plot(2, 4);
+            if ((mode == 22) || (mode == 23)) {
+                connectionSuccessNoise(true);
+                mode = 5;
+                led.plot(2, 4);
+            } else if (mode == 24) {
+                if (player2here) {
+                    showNum(5);
+                    //send diffVal, confirm p2 still here, do countdown?, set to game, plot player
+                    //could do radio.sendValue("join", diffVal);
+                } else {
+                    mode = 19;
+                    //end-server
+                }
+            }
         }
     }
 });
